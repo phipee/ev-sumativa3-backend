@@ -8,6 +8,12 @@ app_name = "cafeteria_app"
 urlpatterns = [
     path("", views.inicio, name="inicio"),
     path("productos/", views.lista_productos, name="lista_productos"),
+    path("carrito/", views.ver_carrito, name="ver_carrito"),
+    path(
+        "carrito/agregar/<int:producto_id>/",
+        views.agregar_al_carrito,
+        name="agregar_al_carrito",
+    ),
     path("pedidos/", views.lista_pedidos, name="lista_pedidos"),
     path("pedidos/<int:pedido_id>/", views.detalle_pedido, name="detalle_pedido"),
     path("encargado/", views.panel_encargado, name="panel_encargado"),

@@ -1,17 +1,43 @@
 {% extends "cafeteria_app/base.html" %}
+{% load formatos %}
 
 {% block title %}Productos | Cafetería Fiores{% endblock %}
 
 {% block content %}
     <h2>Catálogo</h2>
+        <p>Precios expresados en pesos chilenos (CLP).</p>
+        <form method="get">
+            {{ formulario.non_field_errors }}
+            <div>
+                {{ formulario.q.label_tag }}
+                {{ formulario.q }}
+                {{ formulario.q.errors }}
+            </div>
+            <div>
+                {{ formulario.categoria.label_tag }}
+                {{ formulario.categoria }}
+                {{ formulario.categoria.errors }}
+            </div>
+            <button type="submit">Buscar</button>
+            <a href="{% url 'cafeteria_app:lista_productos' %}">Limpiar filtros</a>
+        </form>
     <ul>
         {% for producto in productos %}
             <li>
-                <strong>{{ producto.nombre }}</strong> — {{ producto.categoria.nombre }}
-                — ${{ producto.precio }} (stock: {{ producto.stock }})
+                    <strong>{{ producto.nombre }}</strong> — {{ producto.categoria.nombre }} —
+                    {{ producto.precio|clp }}
+                    {% if producto.stock > 0 %}
+                        <span>Stock: {{ producto.stock }}</span>
+                        <form method="post" action="{% url 'cafeteria_app:agregar_al_carrito' producto.id %}">
+                            {% csrf_token %}
+                            <button type="submit">Agregar al carrito</button>
+                        </form>
+                    {% else %}
+                        <strong>Agotado</strong>
+                    {% endif %}
             </li>
         {% empty %}
-            <li>No hay productos disponibles en este momento.</li>
+                <li>No se encontraron productos disponibles con esos filtros.</li>
         {% endfor %}
     </ul>
 {% endblock %}

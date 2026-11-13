@@ -1,0 +1,19 @@
+{% extends "cafeteria_app/base.html" %}
+{% load formatos %}
+
+{% block title %}Carrito | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Carrito de compras</h2>
+    <ul>
+        {% for item in items %}
+            <li>
+                {{ item.cantidad }} × {{ item.producto.nombre }} —
+                {{ item.subtotal|clp }}
+            </li>
+        {% empty %}
+            <li>Tu carrito está vacío.</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'cafeteria_app:lista_productos' %}">Volver al catálogo</a>
+{% endblock %}

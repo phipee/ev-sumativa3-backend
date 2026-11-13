@@ -1,11 +1,14 @@
 from functools import wraps
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.http import HttpResponseForbidden
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
 
+from .forms import CatalogoForm
 from .models import Categoria, Pedido, Producto
 
 
@@ -60,12 +63,61 @@ def inicio(request):
 
 @solo_cliente
 def lista_productos(request):
+    formulario = CatalogoForm(request.GET or None)
     productos = Producto.objects.filter(
         categoria__activa=True,
         disponible=True,
-        stock__gt=0,
     ).select_related("categoria")
-    return render(request, "cafeteria_app/productos.html", {"productos": productos})
+
+    if formulario.is_valid():
+        nombre = formulario.cleaned_data["q"]
+        categoria = formulario.cleaned_data["categoria"]
+        if nombre:
+            productos = productos.filter(nombre__icontains=nombre)
+        if categoria:
+            productos = productos.filter(categoria=categoria)
+
+    return render(
+        request,
+        "cafeteria_app/productos.html",
+        {"productos": productos, "formulario": formulario},
+    )
+
+
+@solo_cliente
+def ver_carrito(request):
+    carrito = request.session.get("carrito", {})
+    productos = Producto.objects.filter(pk__in=carrito.keys()).select_related("categoria")
+    items = [
+        {
+            "producto": producto,
+            "cantidad": carrito[str(producto.pk)],
+            "subtotal": producto.precio * carrito[str(producto.pk)],
+        }
+        for producto in productos
+    ]
+    return render(request, "cafeteria_app/carrito.html", {"items": items})
+
+
+@solo_cliente
+@require_POST
+def agregar_al_carrito(request, producto_id):
+    producto = get_object_or_404(
+        Producto.objects.filter(categoria__activa=True, disponible=True),
+        pk=producto_id,
+    )
+    carrito = request.session.get("carrito", {})
+    cantidad_actual = carrito.get(str(producto.pk), 0)
+
+    if producto.stock <= 0 or cantidad_actual >= producto.stock:
+        messages.error(request, f"{producto.nombre} está agotado o no tiene stock suficiente.")
+        return redirect("cafeteria_app:lista_productos")
+
+    carrito[str(producto.pk)] = cantidad_actual + 1
+    request.session["carrito"] = carrito
+
+    messages.success(request, f"{producto.nombre} se agregó al carrito.")
+    return redirect("cafeteria_app:ver_carrito")
 
 
 @solo_cliente

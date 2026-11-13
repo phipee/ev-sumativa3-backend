@@ -16,3 +16,10 @@ cliente entra a una dirección del encargado, se le niega el acceso
 prompt 2.- aparte la sesion expira a los 30 minutos y el menu muestra el usuario conectado y su rol
 
 etapa 3
+Prompt 1.- Perfecto ahora haremos el catalogo para los clientes dodne el cliente ve los producto disponibles de las categorias activas, con
+buscador por nombre y filtro de la categoria - aparte los precios estan en clp (pesos chilenos) con separador de miles - 
+eso si, si un producto sin stock se muestra como agotado y no se puede agregas al carrito de compras
+
+
+etapa 4
+yano se puede ocupar ia nt

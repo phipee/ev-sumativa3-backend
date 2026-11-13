@@ -1,8 +1,8 @@
 from datetime import time
 
+from django.conf import settings
 from django.contrib.admin.sites import site
 from django.contrib.auth import get_user_model
-from django.conf import settings
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
@@ -11,6 +11,110 @@ from django.urls import reverse
 
 from .admin import DetallePedidoInline, PedidoAdmin
 from .models import Categoria, DetallePedido, Pedido, Producto
+
+
+class CatalogoCarritoTests(TestCase):
+    def setUp(self):
+        self.cliente = get_user_model().objects.create_user(
+            username="cliente_catalogo",
+            password="demo12345",
+        )
+        self.bebidas = Categoria.objects.create(nombre="Bebidas", descripcion="Bebidas")
+        self.pasteleria = Categoria.objects.create(
+            nombre="Pastelería",
+            descripcion="Dulces",
+            activa=False,
+        )
+        self.cafe = Producto.objects.create(
+            categoria=self.bebidas,
+            codigo="CAF001",
+            nombre="Café americano",
+            precio=1500,
+            stock=2,
+        )
+        self.agotado = Producto.objects.create(
+            categoria=self.bebidas,
+            codigo="CAF002",
+            nombre="Café frío",
+            precio=1800,
+            stock=0,
+        )
+        self.no_disponible = Producto.objects.create(
+            categoria=self.bebidas,
+            codigo="CAF003",
+            nombre="Café de temporada",
+            precio=2000,
+            stock=5,
+            disponible=False,
+        )
+        self.categoria_inactiva = Producto.objects.create(
+            categoria=self.pasteleria,
+            codigo="PAS001",
+            nombre="Queque",
+            precio=1200,
+            stock=5,
+        )
+        self.client.force_login(self.cliente)
+
+    def test_catalogo_incluye_agotados_pero_excluye_no_disponibles_y_categoria_inactiva(self):
+        respuesta = self.client.get(reverse("cafeteria_app:lista_productos"))
+
+        self.assertContains(respuesta, self.cafe.nombre)
+        self.assertContains(respuesta, self.agotado.nombre)
+        self.assertContains(respuesta, "Agotado")
+        self.assertNotContains(respuesta, self.no_disponible.nombre)
+        self.assertNotContains(respuesta, self.categoria_inactiva.nombre)
+        self.assertContains(respuesta, "$1.500")
+        self.assertNotContains(
+            respuesta,
+            reverse("cafeteria_app:agregar_al_carrito", args=[self.agotado.pk]),
+        )
+
+    def test_busqueda_por_nombre_y_filtro_de_categoria_se_combinan(self):
+        te = Producto.objects.create(
+            categoria=self.bebidas,
+            codigo="BEB001",
+            nombre="Té helado",
+            precio=1000,
+            stock=4,
+        )
+
+        respuesta = self.client.get(
+            reverse("cafeteria_app:lista_productos"),
+            {"q": "aMeRiCaNo", "categoria": self.bebidas.pk},
+        )
+
+        self.assertContains(respuesta, self.cafe.nombre)
+        self.assertNotContains(respuesta, self.agotado.nombre)
+        self.assertNotContains(respuesta, te.nombre)
+        self.assertNotContains(respuesta, self.categoria_inactiva.nombre)
+
+    def test_agregar_al_carrito_valida_stock_y_limita_cantidad(self):
+        url = reverse("cafeteria_app:agregar_al_carrito", args=[self.cafe.pk])
+
+        self.assertRedirects(self.client.post(url), reverse("cafeteria_app:ver_carrito"))
+        self.assertRedirects(self.client.post(url), reverse("cafeteria_app:ver_carrito"))
+        self.assertRedirects(self.client.post(url), reverse("cafeteria_app:lista_productos"))
+        self.assertEqual(self.client.session["carrito"], {str(self.cafe.pk): 2})
+
+    def test_producto_agotado_no_se_puede_agregar_al_carrito(self):
+        url = reverse("cafeteria_app:agregar_al_carrito", args=[self.agotado.pk])
+        respuesta = self.client.post(url)
+
+        self.assertRedirects(respuesta, reverse("cafeteria_app:lista_productos"))
+        self.assertNotIn(str(self.agotado.pk), self.client.session.get("carrito", {}))
+
+    def test_producto_no_disponible_no_se_puede_agregar_al_carrito(self):
+        url = reverse("cafeteria_app:agregar_al_carrito", args=[self.no_disponible.pk])
+
+        self.assertEqual(self.client.post(url).status_code, 404)
+        self.assertNotIn(str(self.no_disponible.pk), self.client.session.get("carrito", {}))
+
+    def test_carrito_muestra_subtotal_en_pesos_chilenos(self):
+        self.client.post(reverse("cafeteria_app:agregar_al_carrito", args=[self.cafe.pk]))
+        respuesta = self.client.get(reverse("cafeteria_app:ver_carrito"))
+
+        self.assertContains(respuesta, "$1.500")
 
 
 class ModeloCafeteriaTests(TestCase):

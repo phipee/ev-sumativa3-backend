@@ -20,8 +20,12 @@
                 {% else %}
                     <a href="{% url 'cafeteria_app:inicio' %}">Inicio</a>
                     <a href="{% url 'cafeteria_app:lista_productos' %}">Productos</a>
+                    <a href="{% url 'cafeteria_app:ver_carrito' %}">Carrito</a>
                     <a href="{% url 'cafeteria_app:lista_pedidos' %}">Mis pedidos</a>
                 {% endif %}
+                {% for message in messages %}
+                    <p class="mensaje {{ message.tags }}">{{ message }}</p>
+                {% endfor %}
                 <form method="post" action="{% url 'cafeteria_app:logout' %}">
                     {% csrf_token %}
                     <button type="submit">Cerrar sesión</button>
