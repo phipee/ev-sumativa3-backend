@@ -1,0 +1,9 @@
+Prompt 1.- la situacion es : La cafetería de Inacap atiende a cientos de estudiantes en recreos de 15 minutos, y las filas hacen que
+muchos se queden sin comer. La administración quiere que los clientes puedan armar su pedido desde
+el celular, elegir una hora de retiro y pasar a buscarlo ya listo. Debes construir en Django la aplicación
+web "Cafetería Fiores" a partir de los requerimientos y el modelo de datos de esta evaluación.
+
+necesito que segun la imagen se respeten los tipos, relaciones aparte no se puede eliminar una categoria que tenga productos ni un producto figure un pedido
+
+Prompt 2.- todos los modelos deben ser administrados con django admin, con busqueda filtros - el proyecto debe conetener al menos 4 categorias y 20 productos
+(sin stock o no disponible), un encargado y dos clientes
