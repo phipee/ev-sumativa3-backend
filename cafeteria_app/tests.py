@@ -1,4 +1,4 @@
-from datetime import datetime, time, timezone as datetime_timezone
+from datetime import datetime, time, timedelta, timezone as datetime_timezone
 from unittest.mock import patch
 
 from django.conf import settings
@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .admin import DetallePedidoInline, PedidoAdmin
 from .models import Categoria, DetallePedido, Pedido, Producto
@@ -297,9 +298,10 @@ class CarritoPedidosTests(TestCase):
         )
         url = reverse("cafeteria_app:avanzar_estado_pedido", args=[pedido.pk])
 
-        for estado in ("preparando", "listo", "entregado"):
+        for indice, estado in enumerate(("preparando", "listo", "entregado")):
             self.client.force_login(self.encargado)
-            respuesta = self.client.post(url)
+            intento = {"estado": "entregado" if indice == 0 else "pendiente"}
+            respuesta = self.client.post(url, intento)
             self.assertRedirects(respuesta, reverse("cafeteria_app:gestionar_pedidos"))
             pedido.refresh_from_db()
             self.assertEqual(pedido.estado, estado)
@@ -307,6 +309,38 @@ class CarritoPedidosTests(TestCase):
         self.client.post(url)
         pedido.refresh_from_db()
         self.assertEqual(pedido.estado, "entregado")
+
+    def test_encargado_ve_pedidos_del_dia_y_filtra_por_estado(self):
+        pendiente = Pedido.objects.create(
+            cliente=self.cliente,
+            hora_retiro=time(11, 0),
+        )
+        preparando = Pedido.objects.create(
+            cliente=self.otro_cliente,
+            hora_retiro=time(11, 30),
+            estado="preparando",
+        )
+        antiguo = Pedido.objects.create(
+            cliente=self.cliente,
+            hora_retiro=time(12, 0),
+        )
+        Pedido.objects.filter(pk=antiguo.pk).update(
+            fecha=timezone.now() - timedelta(days=2)
+        )
+        self.client.force_login(self.encargado)
+
+        respuesta = self.client.get(reverse("cafeteria_app:gestionar_pedidos"))
+        self.assertContains(respuesta, f"Pedido #{pendiente.pk}")
+        self.assertContains(respuesta, f"Pedido #{preparando.pk}")
+        self.assertNotContains(respuesta, f"Pedido #{antiguo.pk}")
+
+        respuesta = self.client.get(
+            reverse("cafeteria_app:gestionar_pedidos"),
+            {"estado": "pendiente"},
+        )
+        self.assertContains(respuesta, f"Pedido #{pendiente.pk}")
+        self.assertNotContains(respuesta, f"Pedido #{preparando.pk}")
+        self.assertNotContains(respuesta, f"Pedido #{antiguo.pk}")
 
 
 class ModeloCafeteriaTests(TestCase):
@@ -519,6 +553,13 @@ class RutasCafeteriaTests(TestCase):
         self.client.force_login(self.cliente)
 
         respuesta_lista = self.client.get(reverse("cafeteria_app:lista_pedidos"))
+        DetallePedido.objects.create(
+            pedido=self.pedido,
+            producto=self.producto,
+            cantidad=1,
+            precio_unitario=1500,
+            subtotal=1500,
+        )
         respuesta_propia = self.client.get(
             reverse("cafeteria_app:detalle_pedido", args=[self.pedido.pk])
         )
@@ -530,4 +571,12 @@ class RutasCafeteriaTests(TestCase):
         self.assertContains(respuesta_lista, f"Pedido #{self.pedido.pk}")
         self.assertNotContains(respuesta_lista, f"Pedido #{pedido_ajeno.pk}")
         self.assertEqual(respuesta_propia.status_code, 200)
+        self.assertContains(respuesta_propia, self.producto.nombre)
+        self.assertContains(respuesta_propia, "$1.500")
         self.assertEqual(respuesta_ajena.status_code, 404)
+        respuesta_cancelacion_ajena = self.client.post(
+            reverse("cafeteria_app:cancelar_pedido", args=[pedido_ajeno.pk])
+        )
+        self.assertEqual(respuesta_cancelacion_ajena.status_code, 404)
+        pedido_ajeno.refresh_from_db()
+        self.assertEqual(pedido_ajeno.estado, "pendiente")

@@ -5,6 +5,12 @@
 
 {% block content %}
     <h2>Pedidos</h2>
+    <p>Pedidos del día: {{ today|date:"d/m/Y" }}</p>
+    <form method="get">
+        {{ formulario.as_p }}
+        <button type="submit">Filtrar</button>
+        <a href="{% url 'cafeteria_app:gestionar_pedidos' %}">Limpiar</a>
+    </form>
     <ul>
         {% for pedido in pedidos %}
             <li>

@@ -7,11 +7,16 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_POST
-from django.utils import timezone
 
-from .forms import CantidadCarritoForm, CatalogoForm, ConfirmarPedidoForm
+from .forms import (
+    CantidadCarritoForm,
+    CatalogoForm,
+    ConfirmarPedidoForm,
+    FiltroPedidosForm,
+)
 from .models import Categoria, DetallePedido, Pedido, Producto
 
 
@@ -338,17 +343,27 @@ def panel_encargado(request):
 
 @solo_encargado
 def gestionar_pedidos(request):
+    formulario = FiltroPedidosForm(request.GET or None)
     siguientes = {
         "pendiente": "En preparación",
         "preparando": "Listo para retiro",
         "listo": "Entregado",
     }
-    pedidos = list(
-        Pedido.objects.select_related("cliente").prefetch_related("detalles__producto")
+    pedidos = (
+        Pedido.objects.filter(fecha__date=timezone.localdate())
+        .select_related("cliente")
+        .prefetch_related("detalles__producto")
     )
+    if formulario.is_valid() and formulario.cleaned_data["estado"]:
+        pedidos = pedidos.filter(estado=formulario.cleaned_data["estado"])
+    pedidos = list(pedidos)
     for pedido in pedidos:
         pedido.estado_siguiente = siguientes.get(pedido.estado)
-    return render(request, "cafeteria_app/gestionar_pedidos.html", {"pedidos": pedidos})
+    return render(
+        request,
+        "cafeteria_app/gestionar_pedidos.html",
+        {"pedidos": pedidos, "formulario": formulario, "today": timezone.localdate()},
+    )
 
 
 @solo_encargado

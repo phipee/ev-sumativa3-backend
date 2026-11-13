@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 
-from .models import Categoria
+from .models import Categoria, Pedido
 
 
 class CatalogoForm(forms.Form):
@@ -35,3 +35,11 @@ class ConfirmarPedidoForm(forms.Form):
         if hora <= ahora:
             raise forms.ValidationError("Elige una hora futura para hoy.")
         return hora
+
+
+class FiltroPedidosForm(forms.Form):
+    estado = forms.ChoiceField(
+        label="Estado",
+        required=False,
+        choices=[("", "Todos")] + Pedido.ESTADOS,
+    )

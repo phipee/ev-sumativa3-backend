@@ -11,7 +11,7 @@
                 <a href="{% url 'cafeteria_app:detalle_pedido' pedido.pk %}">
                     Pedido #{{ pedido.pk }}
                 </a>
-                — {{ pedido.estado }} — retiro {{ pedido.hora_retiro }} — {{ pedido.total|clp }}
+                — {{ pedido.get_estado_display }} — retiro {{ pedido.hora_retiro }} — {{ pedido.total|clp }}
                 {% if pedido.estado == "pendiente" %}
                     <form method="post" action="{% url 'cafeteria_app:cancelar_pedido' pedido.pk %}">
                         {% csrf_token %}

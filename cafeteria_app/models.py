@@ -94,7 +94,7 @@ class Pedido(models.Model):
     ESTADOS = [
         ("pendiente", "Pendiente"),
         ("preparando", "En preparación"),
-        ("listo", "Listo para retiro"),
+        ("listo", "Listo"),
         ("entregado", "Entregado"),
         ("cancelado", "Cancelado"),
     ]

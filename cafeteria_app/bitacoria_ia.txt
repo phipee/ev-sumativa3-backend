@@ -39,3 +39,10 @@ prompt2: elimina todo lo referente a crud necesito que elimines las funciones, m
 
 etapa 4
 yano se puede ocupar ia nt
+
+etapa 6
+haz un seguimiento d epedidos donde el cliente vesu historial de pedidos con el detalle y el total, y puede cancelar un pedido
+Pendiente, lo que repone el stocke - Un cliente no puede ver ni modificar pedidos de otra persona, aunque cambie la dirección en el
+navegador - el encargado ve los pedidos del día filtrados por estado y los avanza en orden: Pendiente, En
+preparación, Listo y Entregado. No se puede retroceder ni saltarse estados
+
