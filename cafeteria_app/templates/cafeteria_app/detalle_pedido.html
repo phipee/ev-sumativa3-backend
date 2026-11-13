@@ -1,0 +1,22 @@
+{% extends "cafeteria_app/base.html" %}
+
+{% block title %}Pedido #{{ pedido.pk }} | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Pedido #{{ pedido.pk }}</h2>
+    <p>Estado: {{ pedido.estado }}</p>
+    <p>Hora de retiro: {{ pedido.hora_retiro }}</p>
+    <p>Total: ${{ pedido.total }}</p>
+    {% if pedido.observacion %}
+        <p>Observación: {{ pedido.observacion }}</p>
+    {% endif %}
+    <h3>Productos</h3>
+    <ul>
+        {% for detalle in pedido.detalles.all %}
+            <li>{{ detalle.cantidad }} × {{ detalle.producto.nombre }} — ${{ detalle.subtotal }}</li>
+        {% empty %}
+            <li>Este pedido aún no tiene productos.</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'cafeteria_app:lista_pedidos' %}">Volver a mis pedidos</a>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "cafeteria_app/base.html" %}
+
+{% block title %}Inicio | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Bienvenido a Cafetería Fiores</h2>
+    <p>Revisa el catálogo y encuentra algo rico para tu próximo recreo.</p>
+
+    <h3>Categorías</h3>
+    <ul>
+        {% for categoria in categorias %}
+            <li>{{ categoria.nombre }}</li>
+        {% empty %}
+            <li>No hay categorías disponibles.</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Productos disponibles</h3>
+    <ul>
+        {% for producto in productos_destacados %}
+            <li>{{ producto.nombre }} — ${{ producto.precio }}</li>
+        {% empty %}
+            <li>No hay productos disponibles en este momento.</li>
+        {% endfor %}
+    </ul>
+    <p><a href="{% url 'cafeteria_app:lista_productos' %}">Ver catálogo completo</a></p>
+{% endblock %}

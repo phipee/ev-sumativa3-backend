@@ -1,0 +1,17 @@
+{% extends "cafeteria_app/base.html" %}
+
+{% block title %}Productos | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Catálogo</h2>
+    <ul>
+        {% for producto in productos %}
+            <li>
+                <strong>{{ producto.nombre }}</strong> — {{ producto.categoria.nombre }}
+                — ${{ producto.precio }} (stock: {{ producto.stock }})
+            </li>
+        {% empty %}
+            <li>No hay productos disponibles en este momento.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

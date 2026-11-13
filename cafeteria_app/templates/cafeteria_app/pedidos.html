@@ -1,0 +1,19 @@
+{% extends "cafeteria_app/base.html" %}
+
+{% block title %}Mis pedidos | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Mis pedidos</h2>
+    <ul>
+        {% for pedido in pedidos %}
+            <li>
+                <a href="{% url 'cafeteria_app:detalle_pedido' pedido.pk %}">
+                    Pedido #{{ pedido.pk }}
+                </a>
+                — {{ pedido.estado }} — retiro {{ pedido.hora_retiro }} — ${{ pedido.total }}
+            </li>
+        {% empty %}
+            <li>Aún no tienes pedidos.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}
