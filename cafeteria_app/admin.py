@@ -34,6 +34,7 @@ class PedidoAdmin(admin.ModelAdmin):
     list_filter = ("estado", "fecha", "hora_retiro")
     search_fields = ("id", "cliente__username", "cliente__first_name", "cliente__last_name")
     list_select_related = ("cliente",)
+    readonly_fields = ("estado",)
     inlines = (DetallePedidoInline,)
 
 

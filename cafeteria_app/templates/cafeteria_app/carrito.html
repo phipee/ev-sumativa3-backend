@@ -5,15 +5,46 @@
 
 {% block content %}
     <h2>Carrito de compras</h2>
-    <ul>
-        {% for item in items %}
-            <li>
-                {{ item.cantidad }} × {{ item.producto.nombre }} —
-                {{ item.subtotal|clp }}
-            </li>
-        {% empty %}
-            <li>Tu carrito está vacío.</li>
-        {% endfor %}
-    </ul>
+    {% if items %}
+        <ul>
+            {% for item in items %}
+                <li>
+                    {{ item.producto.nombre }} — {{ item.producto.precio|clp }} c/u
+                    <form method="post" action="{% url 'cafeteria_app:actualizar_cantidad_carrito' item.producto.pk %}">
+                        {% csrf_token %}
+                        <label for="cantidad-{{ item.producto.pk }}">Cantidad</label>
+                        <input
+                            id="cantidad-{{ item.producto.pk }}"
+                            type="number"
+                            name="cantidad"
+                            min="1"
+                            max="{{ item.maximo }}"
+                            value="{{ item.cantidad }}"
+                            required
+                        >
+                        <button type="submit">Actualizar</button>
+                    </form>
+                    <form method="post" action="{% url 'cafeteria_app:quitar_del_carrito' item.producto.pk %}">
+                        {% csrf_token %}
+                        <button type="submit">Quitar</button>
+                    </form>
+                    Subtotal: {{ item.subtotal|clp }}
+                </li>
+            {% endfor %}
+        </ul>
+        <form method="post" action="{% url 'cafeteria_app:vaciar_carrito' %}">
+            {% csrf_token %}
+            <button type="submit">Vaciar carrito</button>
+        </form>
+        <p>Total estimado: {{ total_estimado|clp }}</p>
+        <h3>Confirmar pedido</h3>
+        <form method="post" action="{% url 'cafeteria_app:confirmar_pedido' %}">
+            {% csrf_token %}
+            {{ formulario_pedido.as_p }}
+            <button type="submit">Confirmar pedido</button>
+        </form>
+    {% else %}
+        <p>Tu carrito está vacío.</p>
+    {% endif %}
     <a href="{% url 'cafeteria_app:lista_productos' %}">Volver al catálogo</a>
 {% endblock %}

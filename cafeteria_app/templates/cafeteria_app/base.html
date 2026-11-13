@@ -16,11 +16,12 @@
                 </span>
                 {% if user.is_staff %}
                     <a href="{% url 'cafeteria_app:panel_encargado' %}">Panel encargado</a>
+                    <a href="{% url 'cafeteria_app:gestionar_pedidos' %}">Pedidos</a>
                     <a href="{% url 'admin:index' %}">Administración</a>
                 {% else %}
                     <a href="{% url 'cafeteria_app:inicio' %}">Inicio</a>
                     <a href="{% url 'cafeteria_app:lista_productos' %}">Productos</a>
-                    <a href="{% url 'cafeteria_app:ver_carrito' %}">Carrito</a>
+                    <a href="{% url 'cafeteria_app:ver_carrito' %}">Carrito ({{ carrito_unidades }})</a>
                     <a href="{% url 'cafeteria_app:lista_pedidos' %}">Mis pedidos</a>
                 {% endif %}
                 {% for message in messages %}

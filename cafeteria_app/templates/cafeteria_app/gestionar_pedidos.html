@@ -1,0 +1,30 @@
+{% extends "cafeteria_app/base.html" %}
+{% load formatos %}
+
+{% block title %}Pedidos | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Pedidos</h2>
+    <ul>
+        {% for pedido in pedidos %}
+            <li>
+                Pedido #{{ pedido.pk }} — {{ pedido.cliente }} —
+                {{ pedido.get_estado_display }} — Retiro {{ pedido.hora_retiro }} —
+                {{ pedido.total|clp }}
+                <ul>
+                    {% for detalle in pedido.detalles.all %}
+                        <li>{{ detalle.cantidad }} × {{ detalle.producto.nombre }}</li>
+                    {% endfor %}
+                </ul>
+                {% if pedido.estado_siguiente %}
+                    <form method="post" action="{% url 'cafeteria_app:avanzar_estado_pedido' pedido.pk %}">
+                        {% csrf_token %}
+                        <button type="submit">Avanzar a {{ pedido.estado_siguiente }}</button>
+                    </form>
+                {% endif %}
+            </li>
+        {% empty %}
+            <li>No hay pedidos.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

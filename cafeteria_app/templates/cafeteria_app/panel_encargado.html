@@ -5,5 +5,6 @@
 {% block content %}
     <h2>Panel del encargado</h2>
     <p>Desde el administrador puedes gestionar productos, categorías y pedidos.</p>
+    <p><a href="{% url 'cafeteria_app:gestionar_pedidos' %}">Avanzar pedidos</a></p>
     <a href="{% url 'admin:index' %}">Abrir administración</a>
 {% endblock %}

@@ -37,6 +37,14 @@ class Producto(models.Model):
 
 
 class Pedido(models.Model):
+    ESTADOS = [
+        ("pendiente", "Pendiente"),
+        ("preparando", "En preparación"),
+        ("listo", "Listo para retiro"),
+        ("entregado", "Entregado"),
+        ("cancelado", "Cancelado"),
+    ]
+
     cliente = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -44,7 +52,7 @@ class Pedido(models.Model):
     )
     fecha = models.DateTimeField(auto_now_add=True)
     hora_retiro = models.TimeField()
-    estado = models.CharField(max_length=15, default="pendiente")
+    estado = models.CharField(max_length=15, choices=ESTADOS, default="pendiente")
     total = models.IntegerField(default=0)
     observacion = models.TextField(blank=True)
 

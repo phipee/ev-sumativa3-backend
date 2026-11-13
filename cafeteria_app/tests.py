@@ -1,4 +1,5 @@
-from datetime import time
+from datetime import datetime, time, timezone as datetime_timezone
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.admin.sites import site
@@ -117,6 +118,197 @@ class CatalogoCarritoTests(TestCase):
         self.assertContains(respuesta, "$1.500")
 
 
+class CarritoPedidosTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.cliente = user_model.objects.create_user(username="comprador", password="demo12345")
+        self.otro_cliente = user_model.objects.create_user(username="otro_comprador")
+        self.encargado = user_model.objects.create_user(
+            username="encargado_pedidos",
+            password="demo12345",
+            is_staff=True,
+        )
+        self.categoria = Categoria.objects.create(nombre="Colaciones", descripcion="Comidas")
+        self.producto = Producto.objects.create(
+            categoria=self.categoria,
+            codigo="COL001",
+            nombre="Sándwich",
+            precio=1200,
+            stock=20,
+        )
+        self.otro_producto = Producto.objects.create(
+            categoria=self.categoria,
+            codigo="COL002",
+            nombre="Jugo",
+            precio=800,
+            stock=1,
+        )
+        self.client.force_login(self.cliente)
+
+    def poner_carrito(self, carrito):
+        session = self.client.session
+        session["carrito"] = {str(producto_id): cantidad for producto_id, cantidad in carrito.items()}
+        session.save()
+
+    def checkout(self, cantidades, hora="11:00"):
+        self.poner_carrito(cantidades)
+        return self.client.post(
+            reverse("cafeteria_app:confirmar_pedido"),
+            {"hora_retiro": hora},
+        )
+
+    def test_agrega_actualiza_quita_y_vacia_carrito(self):
+        agregar = reverse("cafeteria_app:agregar_al_carrito", args=[self.producto.pk])
+        for _ in range(10):
+            self.client.post(agregar)
+        self.client.post(agregar)
+        self.assertEqual(self.client.session["carrito"], {str(self.producto.pk): 10})
+
+        actualizar = reverse(
+            "cafeteria_app:actualizar_cantidad_carrito",
+            args=[self.producto.pk],
+        )
+        self.client.post(actualizar, {"cantidad": 5})
+        self.assertEqual(self.client.session["carrito"], {str(self.producto.pk): 5})
+        self.client.post(actualizar, {"cantidad": 11})
+        self.assertEqual(self.client.session["carrito"], {str(self.producto.pk): 5})
+        self.producto.stock = 4
+        self.producto.save(update_fields=["stock"])
+        self.client.post(actualizar, {"cantidad": 5})
+        self.assertEqual(self.client.session["carrito"], {str(self.producto.pk): 5})
+
+        quitar = reverse("cafeteria_app:quitar_del_carrito", args=[self.producto.pk])
+        self.client.post(quitar)
+        self.assertEqual(self.client.session["carrito"], {})
+
+        self.client.post(agregar)
+        self.client.post(reverse("cafeteria_app:vaciar_carrito"))
+        self.assertEqual(self.client.session.get("carrito", {}), {})
+
+    def test_contador_del_carrito_aparece_en_el_menu(self):
+        self.poner_carrito({self.producto.pk: 2, self.otro_producto.pk: 1})
+        respuesta = self.client.get(reverse("cafeteria_app:inicio"))
+
+        self.assertContains(respuesta, "Carrito (3)")
+
+    def test_pedido_guarda_precio_total_descuenta_stock_y_vacia_carrito(self):
+        hora_fija = datetime(2026, 1, 1, 10, 0, tzinfo=datetime_timezone.utc)
+        with patch("django.utils.timezone.localtime", return_value=hora_fija):
+            respuesta = self.checkout(
+                {self.producto.pk: 2, self.otro_producto.pk: 1},
+                "11:00",
+            )
+
+        pedido = Pedido.objects.get()
+        self.assertRedirects(
+            respuesta,
+            reverse("cafeteria_app:detalle_pedido", args=[pedido.pk]),
+        )
+        self.assertEqual(pedido.estado, "pendiente")
+        self.assertEqual(pedido.total, 3200)
+        detalles = {detalle.producto_id: detalle for detalle in pedido.detalles.all()}
+        self.assertEqual(detalles[self.producto.pk].precio_unitario, 1200)
+        self.assertEqual(detalles[self.producto.pk].subtotal, 2400)
+        self.assertEqual(detalles[self.otro_producto.pk].precio_unitario, 800)
+        self.producto.refresh_from_db()
+        self.otro_producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 18)
+        self.assertEqual(self.otro_producto.stock, 0)
+        self.assertEqual(self.client.session.get("carrito", {}), {})
+
+    def test_retiro_pasado_no_crea_pedido_ni_descuenta_stock(self):
+        hora_fija = datetime(2026, 1, 1, 10, 0, tzinfo=datetime_timezone.utc)
+        with patch("django.utils.timezone.localtime", return_value=hora_fija):
+            respuesta = self.checkout({self.producto.pk: 2}, "09:59")
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(Pedido.objects.count(), 0)
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 20)
+        self.assertEqual(self.client.session["carrito"], {str(self.producto.pk): 2})
+
+    def test_checkout_con_stock_insuficiente_es_todo_o_nada(self):
+        hora_fija = datetime(2026, 1, 1, 10, 0, tzinfo=datetime_timezone.utc)
+        with patch("django.utils.timezone.localtime", return_value=hora_fija):
+            respuesta = self.checkout(
+                {self.producto.pk: 2, self.otro_producto.pk: 2},
+                "11:00",
+            )
+
+        self.assertRedirects(respuesta, reverse("cafeteria_app:ver_carrito"))
+        self.assertEqual(Pedido.objects.count(), 0)
+        self.producto.refresh_from_db()
+        self.otro_producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 20)
+        self.assertEqual(self.otro_producto.stock, 1)
+        self.assertEqual(
+            self.client.session["carrito"],
+            {str(self.producto.pk): 2, str(self.otro_producto.pk): 2},
+        )
+
+    def test_cancelar_pedido_pendiente_repone_stock_solo_una_vez(self):
+        self.producto.stock -= 2
+        self.producto.save(update_fields=["stock"])
+        pedido = Pedido.objects.create(
+            cliente=self.cliente,
+            hora_retiro=time(11, 0),
+            total=2400,
+        )
+        DetallePedido.objects.create(
+            pedido=pedido,
+            producto=self.producto,
+            cantidad=2,
+            precio_unitario=1200,
+            subtotal=2400,
+        )
+        url = reverse("cafeteria_app:cancelar_pedido", args=[pedido.pk])
+
+        self.assertRedirects(self.client.post(url), reverse("cafeteria_app:detalle_pedido", args=[pedido.pk]))
+        pedido.refresh_from_db()
+        self.producto.refresh_from_db()
+        self.assertEqual(pedido.estado, "cancelado")
+        self.assertEqual(self.producto.stock, 20)
+        self.client.post(url)
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 20)
+
+    def test_cliente_no_cancela_pedidos_ajenos_o_no_pendientes(self):
+        pedido_ajeno = Pedido.objects.create(
+            cliente=self.otro_cliente,
+            hora_retiro=time(11, 0),
+        )
+        url_ajeno = reverse("cafeteria_app:cancelar_pedido", args=[pedido_ajeno.pk])
+        self.assertEqual(self.client.post(url_ajeno).status_code, 404)
+
+        pedido = Pedido.objects.create(
+            cliente=self.cliente,
+            hora_retiro=time(11, 0),
+            estado="preparando",
+        )
+        url = reverse("cafeteria_app:cancelar_pedido", args=[pedido.pk])
+        self.client.post(url)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, "preparando")
+
+    def test_encargado_avanza_estados_en_orden(self):
+        pedido = Pedido.objects.create(
+            cliente=self.cliente,
+            hora_retiro=time(11, 0),
+        )
+        url = reverse("cafeteria_app:avanzar_estado_pedido", args=[pedido.pk])
+
+        for estado in ("preparando", "listo", "entregado"):
+            self.client.force_login(self.encargado)
+            respuesta = self.client.post(url)
+            self.assertRedirects(respuesta, reverse("cafeteria_app:gestionar_pedidos"))
+            pedido.refresh_from_db()
+            self.assertEqual(pedido.estado, estado)
+
+        self.client.post(url)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, "entregado")
+
+
 class ModeloCafeteriaTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
@@ -227,6 +419,7 @@ class RutasCafeteriaTests(TestCase):
             reverse("cafeteria_app:lista_pedidos"),
             reverse("cafeteria_app:detalle_pedido", args=[self.pedido.pk]),
             reverse("cafeteria_app:panel_encargado"),
+            reverse("cafeteria_app:gestionar_pedidos"),
         )
 
         for ruta in rutas:
@@ -240,8 +433,10 @@ class RutasCafeteriaTests(TestCase):
     def test_cliente_no_accede_a_funciones_del_encargado(self):
         self.client.force_login(self.cliente)
         respuesta = self.client.get(reverse("cafeteria_app:panel_encargado"))
+        respuesta_pedidos = self.client.get(reverse("cafeteria_app:gestionar_pedidos"))
 
         self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(respuesta_pedidos.status_code, 403)
 
     def test_encargado_no_accede_a_funciones_del_cliente(self):
         encargado = get_user_model().objects.create_user(

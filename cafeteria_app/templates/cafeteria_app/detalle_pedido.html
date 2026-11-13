@@ -5,7 +5,7 @@
 
 {% block content %}
     <h2>Pedido #{{ pedido.pk }}</h2>
-    <p>Estado: {{ pedido.estado }}</p>
+    <p>Estado: {{ pedido.get_estado_display }}</p>
     <p>Hora de retiro: {{ pedido.hora_retiro }}</p>
     <p>Total: {{ pedido.total|clp }}</p>
     {% if pedido.observacion %}
@@ -19,5 +19,11 @@
             <li>Este pedido aún no tiene productos.</li>
         {% endfor %}
     </ul>
+    {% if pedido.estado == "pendiente" %}
+        <form method="post" action="{% url 'cafeteria_app:cancelar_pedido' pedido.pk %}">
+            {% csrf_token %}
+            <button type="submit">Cancelar pedido</button>
+        </form>
+    {% endif %}
     <a href="{% url 'cafeteria_app:lista_pedidos' %}">Volver a mis pedidos</a>
 {% endblock %}
