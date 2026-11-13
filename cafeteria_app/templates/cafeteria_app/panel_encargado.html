@@ -1,0 +1,9 @@
+{% extends "cafeteria_app/base.html" %}
+
+{% block title %}Panel encargado | Cafetería Fiores{% endblock %}
+
+{% block content %}
+    <h2>Panel del encargado</h2>
+    <p>Desde el administrador puedes gestionar productos, categorías y pedidos.</p>
+    <a href="{% url 'admin:index' %}">Abrir administración</a>
+{% endblock %}

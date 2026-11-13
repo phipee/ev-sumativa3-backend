@@ -9,10 +9,23 @@
     <header>
         <h1><a href="{% url 'cafeteria_app:inicio' %}">Cafetería Fiores</a></h1>
         <nav aria-label="Navegación principal">
-            <a href="{% url 'cafeteria_app:inicio' %}">Inicio</a>
-            <a href="{% url 'cafeteria_app:lista_productos' %}">Productos</a>
             {% if user.is_authenticated %}
-                <a href="{% url 'cafeteria_app:lista_pedidos' %}">Mis pedidos</a>
+                <span>
+                    Conectado: {{ user.get_full_name|default:user.username }}
+                    ({{ user.is_staff|yesno:"Encargado,Cliente" }})
+                </span>
+                {% if user.is_staff %}
+                    <a href="{% url 'cafeteria_app:panel_encargado' %}">Panel encargado</a>
+                    <a href="{% url 'admin:index' %}">Administración</a>
+                {% else %}
+                    <a href="{% url 'cafeteria_app:inicio' %}">Inicio</a>
+                    <a href="{% url 'cafeteria_app:lista_productos' %}">Productos</a>
+                    <a href="{% url 'cafeteria_app:lista_pedidos' %}">Mis pedidos</a>
+                {% endif %}
+                <form method="post" action="{% url 'cafeteria_app:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit">Cerrar sesión</button>
+                </form>
             {% else %}
                 <a href="{% url 'cafeteria_app:login' %}">Ingresar</a>
             {% endif %}

@@ -2,6 +2,7 @@ from datetime import time
 
 from django.contrib.admin.sites import site
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
@@ -108,19 +109,108 @@ class RutasCafeteriaTests(TestCase):
         )
 
     def test_inicio_y_catalogo_cargan(self):
+        self.client.force_login(self.cliente)
         self.assertEqual(self.client.get(reverse("cafeteria_app:inicio")).status_code, 200)
         respuesta = self.client.get(reverse("cafeteria_app:lista_productos"))
 
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, self.producto.nombre)
 
-    def test_pedidos_requieren_autenticacion(self):
+    def test_todas_las_paginas_requieren_autenticacion(self):
+        rutas = (
+            reverse("cafeteria_app:inicio"),
+            reverse("cafeteria_app:lista_productos"),
+            reverse("cafeteria_app:lista_pedidos"),
+            reverse("cafeteria_app:detalle_pedido", args=[self.pedido.pk]),
+            reverse("cafeteria_app:panel_encargado"),
+        )
+
+        for ruta in rutas:
+            with self.subTest(ruta=ruta):
+                respuesta = self.client.get(ruta)
+                self.assertRedirects(
+                    respuesta,
+                    f"{reverse('cafeteria_app:login')}?next={ruta}",
+                )
+
+    def test_cliente_no_accede_a_funciones_del_encargado(self):
+        self.client.force_login(self.cliente)
+        respuesta = self.client.get(reverse("cafeteria_app:panel_encargado"))
+
+        self.assertEqual(respuesta.status_code, 403)
+
+    def test_encargado_no_accede_a_funciones_del_cliente(self):
+        encargado = get_user_model().objects.create_user(
+            username="encargado",
+            password="demo12345",
+            is_staff=True,
+        )
+        self.client.force_login(encargado)
+
+        for ruta in (
+            reverse("cafeteria_app:inicio"),
+            reverse("cafeteria_app:lista_productos"),
+            reverse("cafeteria_app:lista_pedidos"),
+        ):
+            with self.subTest(ruta=ruta):
+                self.assertEqual(self.client.get(ruta).status_code, 403)
+
+    def test_login_y_logout_separan_roles(self):
+        encargado = get_user_model().objects.create_user(
+            username="encargado",
+            password="demo12345",
+            is_staff=True,
+        )
+
+        respuesta_cliente = self.client.post(
+            reverse("cafeteria_app:login"),
+            {"username": self.cliente.username, "password": "demo12345"},
+        )
+        self.assertRedirects(respuesta_cliente, reverse("cafeteria_app:inicio"))
+        self.assertContains(
+            self.client.get(reverse("cafeteria_app:inicio")),
+            "Cliente",
+        )
+        self.client.post(reverse("cafeteria_app:logout"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+        respuesta_encargado = self.client.post(
+            reverse("cafeteria_app:login"),
+            {"username": encargado.username, "password": "demo12345"},
+        )
+        self.assertRedirects(
+            respuesta_encargado,
+            reverse("cafeteria_app:panel_encargado"),
+        )
+        self.assertContains(
+            self.client.get(reverse("cafeteria_app:panel_encargado")),
+            "Encargado",
+        )
+
+    def test_sesion_expira_despues_de_30_minutos_de_inactividad(self):
+        self.client.force_login(self.cliente)
+        self.assertEqual(self.client.session.get_expiry_age(), 30 * 60)
+        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
+        self.assertFalse(self.client.session.get_expire_at_browser_close())
+
+    def test_sesion_expirada_exige_autenticarse_de_nuevo(self):
+        self.client.force_login(self.cliente)
+        session = self.client.session
+        session.set_expiry(-1)
+        session.save()
         respuesta = self.client.get(reverse("cafeteria_app:lista_pedidos"))
 
         self.assertRedirects(
             respuesta,
             f"{reverse('cafeteria_app:login')}?next={reverse('cafeteria_app:lista_pedidos')}",
         )
+
+    def test_menu_muestra_el_usuario_y_su_rol(self):
+        self.client.force_login(self.cliente)
+        respuesta = self.client.get(reverse("cafeteria_app:inicio"))
+
+        self.assertContains(respuesta, "Conectado: cliente")
+        self.assertContains(respuesta, "Cliente")
 
     def test_cliente_solo_accede_a_sus_pedidos(self):
         pedido_ajeno = Pedido.objects.create(

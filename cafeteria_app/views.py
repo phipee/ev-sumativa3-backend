@@ -1,9 +1,46 @@
+from functools import wraps
+
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse_lazy
 
 from .models import Categoria, Pedido, Producto
 
 
+class InicioSesionView(LoginView):
+    template_name = "cafeteria_app/login.html"
+
+    def get_success_url(self):
+        if self.request.user.is_staff:
+            return reverse_lazy("cafeteria_app:panel_encargado")
+        return reverse_lazy("cafeteria_app:inicio")
+
+
+def solo_cliente(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapped(request, *args, **kwargs):
+        if request.user.is_staff:
+            return HttpResponseForbidden("Esta función está disponible solo para clientes.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
+
+
+def solo_encargado(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_staff:
+            return HttpResponseForbidden("Esta función está disponible solo para encargados.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
+
+
+@solo_cliente
 def inicio(request):
     categorias = Categoria.objects.filter(activa=True)
     productos_destacados = Producto.objects.filter(
@@ -21,6 +58,7 @@ def inicio(request):
     )
 
 
+@solo_cliente
 def lista_productos(request):
     productos = Producto.objects.filter(
         categoria__activa=True,
@@ -30,7 +68,7 @@ def lista_productos(request):
     return render(request, "cafeteria_app/productos.html", {"productos": productos})
 
 
-@login_required
+@solo_cliente
 def lista_pedidos(request):
     pedidos = Pedido.objects.filter(cliente=request.user).prefetch_related(
         "detalles__producto"
@@ -38,7 +76,7 @@ def lista_pedidos(request):
     return render(request, "cafeteria_app/pedidos.html", {"pedidos": pedidos})
 
 
-@login_required
+@solo_cliente
 def detalle_pedido(request, pedido_id):
     pedido = get_object_or_404(
         Pedido.objects.prefetch_related("detalles__producto"),
@@ -46,3 +84,8 @@ def detalle_pedido(request, pedido_id):
         cliente=request.user,
     )
     return render(request, "cafeteria_app/detalle_pedido.html", {"pedido": pedido})
+
+
+@solo_encargado
+def panel_encargado(request):
+    return render(request, "cafeteria_app/panel_encargado.html")

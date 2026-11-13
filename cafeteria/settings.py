@@ -105,7 +105,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 LOGIN_URL = "cafeteria_app:login"
-LOGIN_REDIRECT_URL = "cafeteria_app:lista_pedidos"
+SESSION_COOKIE_AGE = 30 * 60
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # Internationalization

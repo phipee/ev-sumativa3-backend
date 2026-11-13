@@ -7,3 +7,12 @@ necesito que segun la imagen se respeten los tipos, relaciones aparte no se pued
 
 Prompt 2.- todos los modelos deben ser administrados con django admin, con busqueda filtros - el proyecto debe conetener al menos 4 categorias y 20 productos
 (sin stock o no disponible), un encargado y dos clientes
+
+etapa 2
+prompt 1.- ahora segun el contexto anterior haremos el apartado de Autenticación y roles, solo los usuarios autenticados pueden usar la aplicación (
+permite iniciar y cerrar sesion), solo hay 2 roles cliente y encargado (is_staff) pero cada rol accede solo a sus funciones: si un
+cliente entra a una dirección del encargado, se le niega el acceso
+
+prompt 2.- aparte la sesion expira a los 30 minutos y el menu muestra el usuario conectado y su rol
+
+etapa 3
