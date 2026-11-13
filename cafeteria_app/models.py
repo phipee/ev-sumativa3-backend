@@ -12,6 +12,28 @@ class Categoria(models.Model):
         verbose_name_plural = "categorías"
         ordering = ["nombre"]
 
+    @classmethod
+    def crear(cls, nombre, descripcion, activa=True):
+        return cls.objects.create(
+            nombre=nombre,
+            descripcion=descripcion,
+            activa=activa,
+        )
+
+    @classmethod
+    def listar(cls):
+        return cls.objects.all()
+
+    def editar(self, nombre, descripcion, activa):
+        self.nombre = nombre
+        self.descripcion = descripcion
+        self.activa = activa
+        self.save()
+        return self
+
+    def eliminar(self):
+        self.delete()
+
     def __str__(self):
         return self.nombre
 
@@ -31,6 +53,34 @@ class Producto(models.Model):
 
     class Meta:
         ordering = ["nombre"]
+
+    @classmethod
+    def crear(cls, categoria, codigo, nombre, precio, stock, disponible=True):
+        return cls.objects.create(
+            categoria=categoria,
+            codigo=codigo,
+            nombre=nombre,
+            precio=precio,
+            stock=stock,
+            disponible=disponible,
+        )
+
+    @classmethod
+    def listar(cls):
+        return cls.objects.all()
+
+    def editar(self, categoria, codigo, nombre, precio, stock, disponible):
+        self.categoria = categoria
+        self.codigo = codigo
+        self.nombre = nombre
+        self.precio = precio
+        self.stock = stock
+        self.disponible = disponible
+        self.save()
+        return self
+
+    def eliminar(self):
+        self.delete()
 
     def __str__(self):
         return f"{self.nombre} ({self.codigo})"
@@ -88,3 +138,6 @@ class DetallePedido(models.Model):
 
     def __str__(self):
         return f"{self.cantidad} x {self.producto} (pedido #{self.pedido_id})"
+
+
+

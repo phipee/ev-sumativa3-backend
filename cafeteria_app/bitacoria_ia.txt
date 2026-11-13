@@ -2,23 +2,39 @@ Prompt 1.- la situacion es : La cafetería de Inacap atiende a cientos de estudi
 muchos se queden sin comer. La administración quiere que los clientes puedan armar su pedido desde
 el celular, elegir una hora de retiro y pasar a buscarlo ya listo. Debes construir en Django la aplicación
 web "Cafetería Fiores" a partir de los requerimientos y el modelo de datos de esta evaluación.
-
 necesito que segun la imagen se respeten los tipos, relaciones aparte no se puede eliminar una categoria que tenga productos ni un producto figure un pedido
+
+la ia entendio la sicuacion creo todos los modelos de dato y respeto los tiposm relaciones sobre la imagen enviada
 
 Prompt 2.- todos los modelos deben ser administrados con django admin, con busqueda filtros - el proyecto debe conetener al menos 4 categorias y 20 productos
 (sin stock o no disponible), un encargado y dos clientes
+
+la ia respeto que los modelos sean administrados con django admin, busqueda de filtros y realizo lo que deberia contener el proyecto 
+aparte de un encargado y dos clientes
 
 etapa 2
 prompt 1.- ahora segun el contexto anterior haremos el apartado de Autenticación y roles, solo los usuarios autenticados pueden usar la aplicación (
 permite iniciar y cerrar sesion), solo hay 2 roles cliente y encargado (is_staff) pero cada rol accede solo a sus funciones: si un
 cliente entra a una dirección del encargado, se le niega el acceso
 
+La ia hizo el apartado de Autenticación y roles, haciendo que solo los usuarios autenticados puedan usar la app. que solo haya 2 roles 
+cliente y encargadp y que cada rol acceda a sus funciones
+
 prompt 2.- aparte la sesion expira a los 30 minutos y el menu muestra el usuario conectado y su rol
+
+la ia hizo que expire luego de 30 minutos y el menu que muestre el usuairo conectado junto a su rol
 
 etapa 3
 Prompt 1.- Perfecto ahora haremos el catalogo para los clientes dodne el cliente ve los producto disponibles de las categorias activas, con
 buscador por nombre y filtro de la categoria - aparte los precios estan en clp (pesos chilenos) con separador de miles - 
 eso si, si un producto sin stock se muestra como agotado y no se puede agregas al carrito de compras
+
+la ia creo los pedidos, el formato de clp junto a un historial de pedidos junto a una reposicion de stock, hizo diferentes pruebas 
+
+(la ia me creo el crud completo y no me di cuenta)
+prompt2: elimina todo lo referente a crud necesito que elimines las funciones, modelos, configuraciones y etc referente a las operaciones de crud,
+ (aca tuve un problema gigante la ia creo operaciones crud y no habia leido bien la rubrica donde todavia no se podia hacer nada
+ referente asi que hice que la eliminada para seguir con mi prueba )
 
 
 etapa 4
